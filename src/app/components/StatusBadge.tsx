@@ -1,6 +1,6 @@
 import React from 'react';
 import { cn } from '../utils/cn';
-import type { FlatStatus } from '../data/mockData';
+import type { FlatStatus } from '../types';
 
 interface StatusBadgeProps {
   status: FlatStatus;

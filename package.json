@@ -5,7 +5,13 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "dev": "vite"
+    "dev": "vite",
+    "bootstrap": "npm install && npm install --prefix backend",
+    "backend:install": "npm install --prefix backend",
+    "backend:dev": "npm run dev --prefix backend",
+    "backend:check": "npm run check --prefix backend",
+    "backend:init": "npm run db:init --prefix backend",
+    "backend:start": "npm run start --prefix backend"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",

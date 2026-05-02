@@ -1,28 +1,48 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { TrendingUp, DollarSign, Home, Target } from 'lucide-react';
 import { TopNav } from '../components/TopNav';
 import { Card, MetricCard } from '../components/Card';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { salesByFloor, revenueByBuilding, salesTrends, projects } from '../data/mockData';
+import { getAnalytics, getProjects } from '../api/client';
+import type { AnalyticsData, Project } from '../types';
 
 export function Analytics() {
-  const totalRevenue = revenueByBuilding.reduce((sum, item) => sum + item.revenue, 0);
+  const [analytics, setAnalytics] = useState<AnalyticsData>({
+    salesByFloor: [],
+    revenueByBuilding: [],
+    salesTrends: []
+  });
+  const [projects, setProjects] = useState<Project[]>([]);
+
+  useEffect(() => {
+    Promise.all([getAnalytics(), getProjects()])
+      .then(([analyticsResponse, projectResponse]) => {
+        setAnalytics(analyticsResponse);
+        setProjects(projectResponse);
+      })
+      .catch(() => {
+        setAnalytics({ salesByFloor: [], revenueByBuilding: [], salesTrends: [] });
+        setProjects([]);
+      });
+  }, []);
+
+  const totalRevenue = analytics.revenueByBuilding.reduce((sum, item) => sum + item.revenue, 0);
   const totalSold = projects.reduce((sum, p) => sum + p.soldUnits, 0);
   const totalUnits = projects.reduce((sum, p) => sum + p.totalUnits, 0);
-  const conversionRate = ((totalSold / totalUnits) * 100).toFixed(1);
-  
+  const conversionRate = totalUnits ? ((totalSold / totalUnits) * 100).toFixed(1) : '0.0';
+  const averagePrice = totalSold ? totalRevenue / totalSold : 0;
+
   const statusData = [
     { name: 'Available', value: projects.reduce((sum, p) => sum + p.availableUnits, 0), color: '#16A34A' },
     { name: 'Blocked', value: projects.reduce((sum, p) => sum + p.blockedUnits, 0), color: '#F59E0B' },
     { name: 'Sold', value: projects.reduce((sum, p) => sum + p.soldUnits, 0), color: '#DC2626' }
   ];
-  
+
   return (
     <div>
       <TopNav title="Analytics & Reports" />
-      
+
       <div className="p-8 space-y-6">
-        {/* Key Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <MetricCard
             title="Total Revenue"
@@ -46,19 +66,18 @@ export function Analytics() {
           />
           <MetricCard
             title="Avg. Unit Price"
-            value={`₹${((totalRevenue / totalSold) / 10000000).toFixed(2)}Cr`}
+            value={`₹${(averagePrice / 10000000).toFixed(2)}Cr`}
             icon={<Home size={24} />}
             color="warning"
           />
         </div>
-        
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Sales by Floor */}
           <Card>
             <div className="p-6">
               <h3 className="text-xl font-semibold text-[#111827] mb-6">Sales by Floor Range</h3>
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={salesByFloor}>
+                <BarChart data={analytics.salesByFloor}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                   <XAxis dataKey="floor" stroke="#6B7280" />
                   <YAxis stroke="#6B7280" />
@@ -78,13 +97,12 @@ export function Analytics() {
               </ResponsiveContainer>
             </div>
           </Card>
-          
-          {/* Revenue by Building */}
+
           <Card>
             <div className="p-6">
               <h3 className="text-xl font-semibold text-[#111827] mb-6">Revenue by Building</h3>
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={revenueByBuilding} layout="vertical">
+                <BarChart data={analytics.revenueByBuilding} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                   <XAxis type="number" stroke="#6B7280" />
                   <YAxis type="category" dataKey="name" stroke="#6B7280" />
@@ -103,14 +121,13 @@ export function Analytics() {
             </div>
           </Card>
         </div>
-        
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Sales Trends */}
           <Card>
             <div className="p-6">
               <h3 className="text-xl font-semibold text-[#111827] mb-6">Sales Trends (Last 6 Months)</h3>
               <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={salesTrends}>
+                <LineChart data={analytics.salesTrends}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                   <XAxis dataKey="month" stroke="#6B7280" />
                   <YAxis stroke="#6B7280" />
@@ -134,8 +151,7 @@ export function Analytics() {
               </ResponsiveContainer>
             </div>
           </Card>
-          
-          {/* Inventory Status Distribution */}
+
           <Card>
             <div className="p-6">
               <h3 className="text-xl font-semibold text-[#111827] mb-6">Inventory Status Distribution</h3>
@@ -168,17 +184,16 @@ export function Analytics() {
             </div>
           </Card>
         </div>
-        
-        {/* Project Performance */}
+
         <Card>
           <div className="p-6">
             <h3 className="text-xl font-semibold text-[#111827] mb-6">Project Performance</h3>
             <div className="space-y-4">
               {projects.map((project) => {
-                const soldPercentage = (project.soldUnits / project.totalUnits) * 100;
-                const availablePercentage = (project.availableUnits / project.totalUnits) * 100;
-                const blockedPercentage = (project.blockedUnits / project.totalUnits) * 100;
-                
+                const soldPercentage = project.totalUnits ? (project.soldUnits / project.totalUnits) * 100 : 0;
+                const availablePercentage = project.totalUnits ? (project.availableUnits / project.totalUnits) * 100 : 0;
+                const blockedPercentage = project.totalUnits ? (project.blockedUnits / project.totalUnits) * 100 : 0;
+
                 return (
                   <div key={project.id}>
                     <div className="flex items-center justify-between mb-2">

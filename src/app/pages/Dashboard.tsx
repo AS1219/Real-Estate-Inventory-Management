@@ -1,60 +1,44 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { Building2, Home, CheckCircle, Clock, XCircle, TrendingUp, ArrowRight } from 'lucide-react';
+import { Building2, Home, CheckCircle, Clock, TrendingUp, ArrowRight } from 'lucide-react';
 import { TopNav } from '../components/TopNav';
 import { MetricCard, Card } from '../components/Card';
-import { StatusBadge } from '../components/StatusBadge';
 import { Button } from '../components/Button';
-import { projects, recentActivities, type Activity } from '../data/mockData';
+import { getActivities, getProjects } from '../api/client';
+import type { Activity, Project } from '../types';
 
 export function Dashboard() {
   const navigate = useNavigate();
-  const [activities, setActivities] = useState<Activity[]>(recentActivities);
-  
-  // Simulate real-time updates
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [activities, setActivities] = useState<Activity[]>([]);
+
   useEffect(() => {
-    const interval = setInterval(() => {
-      // Randomly add new activity
-      if (Math.random() > 0.7) {
-        const newActivity: Activity = {
-          id: `act-${Date.now()}`,
-          type: ['sold', 'blocked', 'released'][Math.floor(Math.random() * 3)] as any,
-          flatNumber: `${Math.floor(Math.random() * 9) + 1}0${Math.floor(Math.random() * 8) + 1}`,
-          agentName: ['Rahul Sharma', 'Priya Patel', 'Amit Kumar', 'Sneha Gupta'][Math.floor(Math.random() * 4)],
-          timestamp: new Date().toISOString(),
-          projectName: projects[Math.floor(Math.random() * projects.length)].name
-        };
-        setActivities(prev => [newActivity, ...prev.slice(0, 9)]);
-      }
-    }, 10000); // Every 10 seconds
-    
-    return () => clearInterval(interval);
+    getProjects().then(setProjects).catch(() => setProjects([]));
+    getActivities().then(setActivities).catch(() => setActivities([]));
   }, []);
-  
-  // Calculate totals
+
   const totalProjects = projects.length;
   const totalFlats = projects.reduce((sum, p) => sum + p.totalUnits, 0);
   const availableFlats = projects.reduce((sum, p) => sum + p.availableUnits, 0);
   const blockedFlats = projects.reduce((sum, p) => sum + p.blockedUnits, 0);
   const soldFlats = projects.reduce((sum, p) => sum + p.soldUnits, 0);
-  
+
   const formatRelativeTime = (timestamp: string) => {
     const now = Date.now();
     const time = new Date(timestamp).getTime();
-    const diff = Math.floor((now - time) / 1000); // in seconds
-    
+    const diff = Math.floor((now - time) / 1000);
+
     if (diff < 60) return 'Just now';
     if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
     if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
     return `${Math.floor(diff / 86400)}d ago`;
   };
-  
+
   return (
     <div>
       <TopNav title="Dashboard" showLiveIndicator />
-      
+
       <div className="p-4 md:p-8 space-y-6 md:space-y-8">
-        {/* Metrics Grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-6">
           <MetricCard
             title="Total Projects"
@@ -89,16 +73,15 @@ export function Dashboard() {
             trend={{ value: '+24% this month', isPositive: true }}
           />
         </div>
-        
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Project Quick View */}
           <div className="lg:col-span-2">
             <Card>
               <div className="p-4 md:p-6">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xl font-semibold text-[#111827]">Recent Projects</h2>
-                  <Button 
-                    variant="ghost" 
+                  <Button
+                    variant="ghost"
                     size="sm"
                     onClick={() => navigate('/projects')}
                   >
@@ -106,7 +89,7 @@ export function Dashboard() {
                     <ArrowRight size={16} />
                   </Button>
                 </div>
-                
+
                 <div className="space-y-4">
                   {projects.slice(0, 4).map((project) => (
                     <div
@@ -139,8 +122,7 @@ export function Dashboard() {
               </div>
             </Card>
           </div>
-          
-          {/* Recent Activity Panel */}
+
           <div>
             <Card>
               <div className="p-6">
@@ -151,21 +133,21 @@ export function Dashboard() {
                     <span className="text-sm text-[#16A34A] font-medium">Live</span>
                   </div>
                 </div>
-                
+
                 <div className="space-y-4 max-h-[500px] overflow-y-auto">
                   {activities.map((activity) => {
-                    const icons = {
+                    const icons: Record<string, JSX.Element> = {
                       sold: <TrendingUp size={16} className="text-[#DC2626]" />,
                       blocked: <Clock size={16} className="text-[#F59E0B]" />,
                       released: <CheckCircle size={16} className="text-[#16A34A]" />
                     };
-                    
-                    const colors = {
+
+                    const colors: Record<string, string> = {
                       sold: 'bg-[#DC2626]/10',
                       blocked: 'bg-[#F59E0B]/10',
                       released: 'bg-[#16A34A]/10'
                     };
-                    
+
                     return (
                       <div key={activity.id} className="flex gap-3">
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${colors[activity.type]}`}>
@@ -188,8 +170,7 @@ export function Dashboard() {
             </Card>
           </div>
         </div>
-        
-        {/* Quick Stats */}
+
         <Card>
           <div className="p-6">
             <h2 className="text-xl font-semibold text-[#111827] mb-6">Inventory Overview</h2>
@@ -198,43 +179,43 @@ export function Dashboard() {
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-[#6B7280]">Available Inventory</span>
                   <span className="text-sm font-semibold text-[#16A34A]">
-                    {Math.round((availableFlats / totalFlats) * 100)}%
+                    {totalFlats ? Math.round((availableFlats / totalFlats) * 100) : 0}%
                   </span>
                 </div>
                 <div className="h-2 bg-[#E5E7EB] rounded-full overflow-hidden">
                   <div
                     className="h-full bg-[#16A34A] rounded-full transition-all duration-500"
-                    style={{ width: `${(availableFlats / totalFlats) * 100}%` }}
+                    style={{ width: `${totalFlats ? (availableFlats / totalFlats) * 100 : 0}%` }}
                   />
                 </div>
               </div>
-              
+
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-[#6B7280]">Blocked Units</span>
                   <span className="text-sm font-semibold text-[#F59E0B]">
-                    {Math.round((blockedFlats / totalFlats) * 100)}%
+                    {totalFlats ? Math.round((blockedFlats / totalFlats) * 100) : 0}%
                   </span>
                 </div>
                 <div className="h-2 bg-[#E5E7EB] rounded-full overflow-hidden">
                   <div
                     className="h-full bg-[#F59E0B] rounded-full transition-all duration-500"
-                    style={{ width: `${(blockedFlats / totalFlats) * 100}%` }}
+                    style={{ width: `${totalFlats ? (blockedFlats / totalFlats) * 100 : 0}%` }}
                   />
                 </div>
               </div>
-              
+
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-[#6B7280]">Sold Units</span>
                   <span className="text-sm font-semibold text-[#DC2626]">
-                    {Math.round((soldFlats / totalFlats) * 100)}%
+                    {totalFlats ? Math.round((soldFlats / totalFlats) * 100) : 0}%
                   </span>
                 </div>
                 <div className="h-2 bg-[#E5E7EB] rounded-full overflow-hidden">
                   <div
                     className="h-full bg-[#DC2626] rounded-full transition-all duration-500"
-                    style={{ width: `${(soldFlats / totalFlats) * 100}%` }}
+                    style={{ width: `${totalFlats ? (soldFlats / totalFlats) * 100 : 0}%` }}
                   />
                 </div>
               </div>
